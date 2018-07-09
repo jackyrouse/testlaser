@@ -31,6 +31,8 @@ struct LASER_Message
     float range_max;
     float ranges[720];
     float intensities[720];
+    int rangessize = 720;
+    int intensitiessize = 720;
 };
 typedef LASER_Message LASERMessage;
 

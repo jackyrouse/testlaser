@@ -20,11 +20,14 @@
 #include "cartographer/common/time.h"
 #include "ros/ros.h"
 
-namespace cartographer_ros {
+namespace cartographer_ros
+{
 
-::ros::Time ToRos(::cartographer::common::Time time);
+::ros::Time
+ToRos(::cartographer::common::Time time);
 
-::cartographer::common::Time FromRos(const ::ros::Time& time);
+::cartographer::common::Time
+FromRos(const timeval &time);
 
 }  // namespace cartographer_ros
 

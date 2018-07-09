@@ -17,14 +17,14 @@
 #include "msg_conversion.h"
 
 #include <cmath>
-#include <laserdata.h>
+
 #include "cartographer/common/math.h"
 #include "cartographer/common/port.h"
 #include "cartographer/common/time.h"
 #include "cartographer/io/submap_painter.h"
 #include "cartographer/transform/proto/transform.pb.h"
 #include "cartographer/transform/transform.h"
-#include "cartographer_ros/time_conversion.h"
+#include "time_conversion.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/Transform.h"
@@ -87,26 +87,6 @@ PreparePointCloud2Message(const int64_t timestamp,
     return msg;
 }
 
-// For sensor_msgs::LaserScan.
-bool
-HasEcho(float) { return true; }
-
-float
-GetFirstEcho(float range) { return range; }
-
-// For sensor_msgs::MultiEchoLaserScan.
-bool
-HasEcho(const sensor_msgs::LaserEcho &echo)
-{
-    return !echo.echoes.empty();
-}
-
-float
-GetFirstEcho(const sensor_msgs::LaserEcho &echo)
-{
-    return echo.echoes[0];
-}
-
 // For sensor_msgs::LaserScan and sensor_msgs::MultiEchoLaserScan.
 std::tuple<PointCloudWithIntensities, ::cartographer::common::Time>
 LaserScanToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg)
@@ -123,30 +103,25 @@ LaserScanToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg)
     }
     PointCloudWithIntensities point_cloud;
     float angle = msg.angle_min;
-    for (size_t i = 0; i < msg.ranges.size(); ++i)
+    for (size_t i = 0; i < msg.rangessize; ++i)
     {
         const auto &echoes = msg.ranges[i];
-        if (HasEcho(echoes))
+        const float first_echo = echoes;
+        if (msg.range_min <= first_echo && first_echo <= msg.range_max)
         {
-            const float first_echo = GetFirstEcho(echoes);
-            if (msg.range_min <= first_echo && first_echo <= msg.range_max)
+            const Eigen::AngleAxisf rotation(angle, Eigen::Vector3f::UnitZ());
+            Eigen::Vector4f point;
+            point << rotation * (first_echo * Eigen::Vector3f::UnitX()), i * msg.time_increment;
+            point_cloud.points.push_back(point);
+            if (msg.intensitiessize> 0)
             {
-                const Eigen::AngleAxisf rotation(angle, Eigen::Vector3f::UnitZ());
-                Eigen::Vector4f point;
-                point << rotation * (first_echo * Eigen::Vector3f::UnitX()),
-                    i * msg.time_increment;
-                point_cloud.points.push_back(point);
-                if (msg.intensities.size() > 0)
-                {
-                    CHECK_EQ(msg.intensities.size(), msg.ranges.size());
-                    const auto &echo_intensities = msg.intensities[i];
-                    CHECK(HasEcho(echo_intensities));
-                    point_cloud.intensities.push_back(GetFirstEcho(echo_intensities));
-                }
-                else
-                {
-                    point_cloud.intensities.push_back(0.f);
-                }
+                CHECK_EQ(msg.intensitiessize, msg.rangessize);
+                const auto &echo_intensities = msg.intensities[i];
+                point_cloud.intensities.push_back(echo_intensities);
+            }
+            else
+            {
+                point_cloud.intensities.push_back(0.f);
             }
         }
         angle += msg.angle_increment;
@@ -281,12 +256,16 @@ ToRigid3d(const geometry_msgs::Pose &pose)
                    ToEigen(pose.orientation));
 }
 
-Eigen::Vector3d
-ToEigen(const Vector3 &vector3)
+Rigid3d
+ToRigid3d(const Eigen::Vector3d &vector, const Eigen::Quaterniond &quaternion)
+{
+    return Rigid3d(vector, quaternion);
+}
+
+Eigen::Vector3d ToEigen(const IMU_PandCspace::Vector3 &vector3)
 {
     return Eigen::Vector3d(vector3.x, vector3.y, vector3.z);
 }
-
 /*
 Eigen::Vector3d ToEigen(const geometry_msgs::Vector3 &vector3)
 {

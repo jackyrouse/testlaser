@@ -14,34 +14,40 @@
  * limitations under the License.
  */
 
-#include "cartographer_ros/time_conversion.h"
+#include "time_conversion.h"
 
 #include "cartographer/common/time.h"
 #include "ros/ros.h"
 
-namespace cartographer_ros {
+namespace cartographer_ros
+{
 
-::ros::Time ToRos(::cartographer::common::Time time) {
-  int64_t uts_timestamp = ::cartographer::common::ToUniversal(time);
-  int64_t ns_since_unix_epoch =
-      (uts_timestamp -
-       ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds *
-           10000000ll) *
-      100ll;
-  ::ros::Time ros_time;
-  ros_time.fromNSec(ns_since_unix_epoch);
-  return ros_time;
+::ros::Time
+ToRos(::cartographer::common::Time time)
+{
+    int64_t uts_timestamp = ::cartographer::common::ToUniversal(time);
+    int64_t ns_since_unix_epoch =
+        (uts_timestamp -
+            ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds *
+                10000000ll) *
+            100ll;
+    ::ros::Time ros_time;
+    ros_time.fromNSec(ns_since_unix_epoch);
+    return ros_time;
 }
 
 // TODO(pedrofernandez): Write test.
-::cartographer::common::Time FromRos(const ::ros::Time& time) {
-  // The epoch of the ICU Universal Time Scale is "0001-01-01 00:00:00.0 +0000",
-  // exactly 719162 days before the Unix epoch.
-  return ::cartographer::common::FromUniversal(
-      (time.sec +
-       ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds) *
-          10000000ll +
-      (time.nsec + 50) / 100);  // + 50 to get the rounding correct.
+::cartographer::common::Time
+FromRos(const timeval &time)
+{
+    // The epoch of the ICU Universal Time Scale is "0001-01-01 00:00:00.0 +0000",
+    // exactly 719162 days before the Unix epoch.
+    //tv_usec是微秒，所以要乘以1000
+    return ::cartographer::common::FromUniversal(
+        (time.tv_sec +
+            ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds) *
+            10000000ll +
+            (time.tv_usec*1000 + 50) / 100);  // + 50 to get the rounding correct.
 }
 
 }  // namespace cartographer_ros

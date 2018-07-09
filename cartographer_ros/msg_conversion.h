@@ -75,7 +75,9 @@ ToPointCloudWithIntensities(const sensor_msgs::PointCloud2& message);
 
 ::cartographer::transform::Rigid3d ToRigid3d(const geometry_msgs::Pose& pose);
 
-Eigen::Vector3d ToEigen(const Vector3& vector3);
+::cartographer::transform::Rigid3d ToRigid3d(const Eigen::Vector3d& vector, const Eigen::Quaterniond& quaternion);
+
+Eigen::Vector3d ToEigen(const IMU_PandCspace::Vector3& vector3);
 
 /*
 Eigen::Vector3d ToEigen(const geometry_msgs::Vector3& vector3);
