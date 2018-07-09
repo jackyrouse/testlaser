@@ -49,7 +49,7 @@ namespace cartographer_ros {
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const LASERMessage& msg);
+ToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage& msg);
 
 /*
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,

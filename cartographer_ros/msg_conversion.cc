@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#include "cartographer_ros/msg_conversion.h"
+#include "msg_conversion.h"
 
 #include <cmath>
-#include <imudata.h>
-
+#include <laserdata.h>
 #include "cartographer/common/math.h"
 #include "cartographer/common/port.h"
 #include "cartographer/common/time.h"
@@ -57,147 +56,152 @@ using ::cartographer::transform::Rigid3d;
 using ::cartographer_ros_msgs::LandmarkEntry;
 using ::cartographer_ros_msgs::LandmarkList;
 
-sensor_msgs::PointCloud2 PreparePointCloud2Message(const int64_t timestamp,
-                                                   const std::string &frame_id,
-                                                   const int num_points)
+sensor_msgs::PointCloud2
+PreparePointCloud2Message(const int64_t timestamp,
+                          const std::string &frame_id,
+                          const int num_points)
 {
-  sensor_msgs::PointCloud2 msg;
-  msg.header.stamp = ToRos(::cartographer::common::FromUniversal(timestamp));
-  msg.header.frame_id = frame_id;
-  msg.height = 1;
-  msg.width = num_points;
-  msg.fields.resize(3);
-  msg.fields[0].name = "x";
-  msg.fields[0].offset = 0;
-  msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
-  msg.fields[0].count = 1;
-  msg.fields[1].name = "y";
-  msg.fields[1].offset = 4;
-  msg.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
-  msg.fields[1].count = 1;
-  msg.fields[2].name = "z";
-  msg.fields[2].offset = 8;
-  msg.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
-  msg.fields[2].count = 1;
-  msg.is_bigendian = false;
-  msg.point_step = 16;
-  msg.row_step = 16 * msg.width;
-  msg.is_dense = true;
-  msg.data.resize(16 * num_points);
-  return msg;
+    sensor_msgs::PointCloud2 msg;
+    msg.header.stamp = ToRos(::cartographer::common::FromUniversal(timestamp));
+    msg.header.frame_id = frame_id;
+    msg.height = 1;
+    msg.width = num_points;
+    msg.fields.resize(3);
+    msg.fields[0].name = "x";
+    msg.fields[0].offset = 0;
+    msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
+    msg.fields[0].count = 1;
+    msg.fields[1].name = "y";
+    msg.fields[1].offset = 4;
+    msg.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
+    msg.fields[1].count = 1;
+    msg.fields[2].name = "z";
+    msg.fields[2].offset = 8;
+    msg.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
+    msg.fields[2].count = 1;
+    msg.is_bigendian = false;
+    msg.point_step = 16;
+    msg.row_step = 16 * msg.width;
+    msg.is_dense = true;
+    msg.data.resize(16 * num_points);
+    return msg;
 }
 
 // For sensor_msgs::LaserScan.
-bool HasEcho(float) { return true; }
+bool
+HasEcho(float) { return true; }
 
-float GetFirstEcho(float range) { return range; }
+float
+GetFirstEcho(float range) { return range; }
 
 // For sensor_msgs::MultiEchoLaserScan.
-bool HasEcho(const sensor_msgs::LaserEcho &echo)
+bool
+HasEcho(const sensor_msgs::LaserEcho &echo)
 {
-  return !echo.echoes.empty();
+    return !echo.echoes.empty();
 }
 
-float GetFirstEcho(const sensor_msgs::LaserEcho &echo)
+float
+GetFirstEcho(const sensor_msgs::LaserEcho &echo)
 {
-  return echo.echoes[0];
+    return echo.echoes[0];
 }
 
 // For sensor_msgs::LaserScan and sensor_msgs::MultiEchoLaserScan.
-template <typename LaserMessageType>
 std::tuple<PointCloudWithIntensities, ::cartographer::common::Time>
-LaserScanToPointCloudWithIntensities(const LaserMessageType &msg)
+LaserScanToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg)
 {
-  CHECK_GE(msg.range_min, 0.f);
-  CHECK_GE(msg.range_max, msg.range_min);
-  if (msg.angle_increment > 0.f)
-  {
-    CHECK_GT(msg.angle_max, msg.angle_min);
-  }
-  else
-  {
-    CHECK_GT(msg.angle_min, msg.angle_max);
-  }
-  PointCloudWithIntensities point_cloud;
-  float angle = msg.angle_min;
-  for (size_t i = 0; i < msg.ranges.size(); ++i)
-  {
-    const auto &echoes = msg.ranges[i];
-    if (HasEcho(echoes))
+    CHECK_GE(msg.range_min, 0.f);
+    CHECK_GE(msg.range_max, msg.range_min);
+    if (msg.angle_increment > 0.f)
     {
-      const float first_echo = GetFirstEcho(echoes);
-      if (msg.range_min <= first_echo && first_echo <= msg.range_max)
-      {
-        const Eigen::AngleAxisf rotation(angle, Eigen::Vector3f::UnitZ());
-        Eigen::Vector4f point;
-        point << rotation * (first_echo * Eigen::Vector3f::UnitX()),
-            i * msg.time_increment;
-        point_cloud.points.push_back(point);
-        if (msg.intensities.size() > 0)
-        {
-          CHECK_EQ(msg.intensities.size(), msg.ranges.size());
-          const auto &echo_intensities = msg.intensities[i];
-          CHECK(HasEcho(echo_intensities));
-          point_cloud.intensities.push_back(GetFirstEcho(echo_intensities));
-        }
-        else
-        {
-          point_cloud.intensities.push_back(0.f);
-        }
-      }
+        CHECK_GT(msg.angle_max, msg.angle_min);
     }
-    angle += msg.angle_increment;
-  }
-  ::cartographer::common::Time timestamp = FromRos(msg.header.stamp);
-  if (!point_cloud.points.empty())
-  {
-    const double duration = point_cloud.points.back()[3];
-    timestamp += cartographer::common::FromSeconds(duration);
-    for (Eigen::Vector4f &point : point_cloud.points)
+    else
     {
-      point[3] -= duration;
+        CHECK_GT(msg.angle_min, msg.angle_max);
     }
-  }
-  return std::make_tuple(point_cloud, timestamp);
+    PointCloudWithIntensities point_cloud;
+    float angle = msg.angle_min;
+    for (size_t i = 0; i < msg.ranges.size(); ++i)
+    {
+        const auto &echoes = msg.ranges[i];
+        if (HasEcho(echoes))
+        {
+            const float first_echo = GetFirstEcho(echoes);
+            if (msg.range_min <= first_echo && first_echo <= msg.range_max)
+            {
+                const Eigen::AngleAxisf rotation(angle, Eigen::Vector3f::UnitZ());
+                Eigen::Vector4f point;
+                point << rotation * (first_echo * Eigen::Vector3f::UnitX()),
+                    i * msg.time_increment;
+                point_cloud.points.push_back(point);
+                if (msg.intensities.size() > 0)
+                {
+                    CHECK_EQ(msg.intensities.size(), msg.ranges.size());
+                    const auto &echo_intensities = msg.intensities[i];
+                    CHECK(HasEcho(echo_intensities));
+                    point_cloud.intensities.push_back(GetFirstEcho(echo_intensities));
+                }
+                else
+                {
+                    point_cloud.intensities.push_back(0.f);
+                }
+            }
+        }
+        angle += msg.angle_increment;
+    }
+    ::cartographer::common::Time timestamp = FromRos(msg.header.stamp);
+    if (!point_cloud.points.empty())
+    {
+        const double duration = point_cloud.points.back()[3];
+        timestamp += cartographer::common::FromSeconds(duration);
+        for (Eigen::Vector4f &point : point_cloud.points)
+        {
+            point[3] -= duration;
+        }
+    }
+    return std::make_tuple(point_cloud, timestamp);
 }
 
-bool PointCloud2HasField(const sensor_msgs::PointCloud2 &pc2,
-                         const std::string &field_name)
+bool
+PointCloud2HasField(const sensor_msgs::PointCloud2 &pc2,
+                    const std::string &field_name)
 {
-  for (const auto &field : pc2.fields)
-  {
-    if (field.name == field_name)
+    for (const auto &field : pc2.fields)
     {
-      return true;
+        if (field.name == field_name)
+        {
+            return true;
+        }
     }
-  }
-  return false;
+    return false;
 }
 
 } // namespace
 
-sensor_msgs::PointCloud2 ToPointCloud2Message(
+sensor_msgs::PointCloud2
+ToPointCloud2Message(
     const int64_t timestamp, const std::string &frame_id,
     const ::cartographer::sensor::TimedPointCloud &point_cloud)
 {
-  auto msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
-  ::ros::serialization::OStream stream(msg.data.data(), msg.data.size());
-  for (const Eigen::Vector4f &point : point_cloud)
-  {
-    stream.next(point.x());
-    stream.next(point.y());
-    stream.next(point.z());
-    stream.next(kPointCloudComponentFourMagic);
-  }
-  return msg;
+    auto msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
+    ::ros::serialization::OStream stream(msg.data.data(), msg.data.size());
+    for (const Eigen::Vector4f &point : point_cloud)
+    {
+        stream.next(point.x());
+        stream.next(point.y());
+        stream.next(point.z());
+        stream.next(kPointCloudComponentFourMagic);
+    }
+    return msg;
 }
-
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const LASERMessage& msg)
+ToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg)
 {
-  return LaserScanToPointCloudWithIntensities(msg);
+    return LaserScanToPointCloudWithIntensities(msg);
 }
 
 /*
@@ -249,34 +253,38 @@ ToPointCloudWithIntensities(const sensor_msgs::PointCloud2 &message)
 }
 */
 
-LandmarkData ToLandmarkData(const LandmarkList &landmark_list)
+LandmarkData
+ToLandmarkData(const LandmarkList &landmark_list)
 {
-  LandmarkData landmark_data;
-  landmark_data.time = FromRos(landmark_list.header.stamp);
-  for (const LandmarkEntry &entry : landmark_list.landmark)
-  {
-    landmark_data.landmark_observations.push_back(
-        {entry.id, ToRigid3d(entry.tracking_from_landmark_transform),
-         entry.translation_weight, entry.rotation_weight});
-  }
-  return landmark_data;
+    LandmarkData landmark_data;
+    landmark_data.time = FromRos(landmark_list.header.stamp);
+    for (const LandmarkEntry &entry : landmark_list.landmark)
+    {
+        landmark_data.landmark_observations.push_back(
+            {entry.id, ToRigid3d(entry.tracking_from_landmark_transform),
+             entry.translation_weight, entry.rotation_weight});
+    }
+    return landmark_data;
 }
 
-Rigid3d ToRigid3d(const geometry_msgs::TransformStamped &transform)
+Rigid3d
+ToRigid3d(const geometry_msgs::TransformStamped &transform)
 {
-  return Rigid3d(ToEigen(transform.transform.translation),
-                 ToEigen(transform.transform.rotation));
+    return Rigid3d(ToEigen(transform.transform.translation),
+                   ToEigen(transform.transform.rotation));
 }
 
-Rigid3d ToRigid3d(const geometry_msgs::Pose &pose)
+Rigid3d
+ToRigid3d(const geometry_msgs::Pose &pose)
 {
-  return Rigid3d({pose.position.x, pose.position.y, pose.position.z},
-                 ToEigen(pose.orientation));
+    return Rigid3d({pose.position.x, pose.position.y, pose.position.z},
+                   ToEigen(pose.orientation));
 }
 
-Eigen::Vector3d ToEigen(const Vector3& vector3)
+Eigen::Vector3d
+ToEigen(const Vector3 &vector3)
 {
-  return Eigen::Vector3d(vector3.x, vector3.y, vector3.z);
+    return Eigen::Vector3d(vector3.x, vector3.y, vector3.z);
 }
 
 /*
@@ -292,123 +300,129 @@ Eigen::Quaterniond ToEigen(const geometry_msgs::Quaternion &quaternion)
 }
 */
 
-geometry_msgs::Transform ToGeometryMsgTransform(const Rigid3d &rigid3d)
+geometry_msgs::Transform
+ToGeometryMsgTransform(const Rigid3d &rigid3d)
 {
-  geometry_msgs::Transform transform;
-  transform.translation.x = rigid3d.translation().x();
-  transform.translation.y = rigid3d.translation().y();
-  transform.translation.z = rigid3d.translation().z();
-  transform.rotation.w = rigid3d.rotation().w();
-  transform.rotation.x = rigid3d.rotation().x();
-  transform.rotation.y = rigid3d.rotation().y();
-  transform.rotation.z = rigid3d.rotation().z();
-  return transform;
+    geometry_msgs::Transform transform;
+    transform.translation.x = rigid3d.translation().x();
+    transform.translation.y = rigid3d.translation().y();
+    transform.translation.z = rigid3d.translation().z();
+    transform.rotation.w = rigid3d.rotation().w();
+    transform.rotation.x = rigid3d.rotation().x();
+    transform.rotation.y = rigid3d.rotation().y();
+    transform.rotation.z = rigid3d.rotation().z();
+    return transform;
 }
 
-geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d &rigid3d)
+geometry_msgs::Pose
+ToGeometryMsgPose(const Rigid3d &rigid3d)
 {
-  geometry_msgs::Pose pose;
-  pose.position = ToGeometryMsgPoint(rigid3d.translation());
-  pose.orientation.w = rigid3d.rotation().w();
-  pose.orientation.x = rigid3d.rotation().x();
-  pose.orientation.y = rigid3d.rotation().y();
-  pose.orientation.z = rigid3d.rotation().z();
-  return pose;
+    geometry_msgs::Pose pose;
+    pose.position = ToGeometryMsgPoint(rigid3d.translation());
+    pose.orientation.w = rigid3d.rotation().w();
+    pose.orientation.x = rigid3d.rotation().x();
+    pose.orientation.y = rigid3d.rotation().y();
+    pose.orientation.z = rigid3d.rotation().z();
+    return pose;
 }
 
-geometry_msgs::Point ToGeometryMsgPoint(const Eigen::Vector3d &vector3d)
+geometry_msgs::Point
+ToGeometryMsgPoint(const Eigen::Vector3d &vector3d)
 {
-  geometry_msgs::Point point;
-  point.x = vector3d.x();
-  point.y = vector3d.y();
-  point.z = vector3d.z();
-  return point;
+    geometry_msgs::Point point;
+    point.x = vector3d.x();
+    point.y = vector3d.y();
+    point.z = vector3d.z();
+    return point;
 }
 
-Eigen::Vector3d LatLongAltToEcef(const double latitude, const double longitude,
-                                 const double altitude)
+Eigen::Vector3d
+LatLongAltToEcef(const double latitude, const double longitude,
+                 const double altitude)
 {
-  // https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
-  constexpr double a = 6378137.; // semi-major axis, equator to center.
-  constexpr double f = 1. / 298.257223563;
-  constexpr double b = a * (1. - f); // semi-minor axis, pole to center.
-  constexpr double a_squared = a * a;
-  constexpr double b_squared = b * b;
-  constexpr double e_squared = (a_squared - b_squared) / a_squared;
-  const double sin_phi = std::sin(cartographer::common::DegToRad(latitude));
-  const double cos_phi = std::cos(cartographer::common::DegToRad(latitude));
-  const double sin_lambda = std::sin(cartographer::common::DegToRad(longitude));
-  const double cos_lambda = std::cos(cartographer::common::DegToRad(longitude));
-  const double N = a / std::sqrt(1 - e_squared * sin_phi * sin_phi);
-  const double x = (N + altitude) * cos_phi * cos_lambda;
-  const double y = (N + altitude) * cos_phi * sin_lambda;
-  const double z = (b_squared / a_squared * N + altitude) * sin_phi;
+    // https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
+    constexpr double a = 6378137.; // semi-major axis, equator to center.
+    constexpr double f = 1. / 298.257223563;
+    constexpr double b = a * (1. - f); // semi-minor axis, pole to center.
+    constexpr double a_squared = a * a;
+    constexpr double b_squared = b * b;
+    constexpr double e_squared = (a_squared - b_squared) / a_squared;
+    const double sin_phi = std::sin(cartographer::common::DegToRad(latitude));
+    const double cos_phi = std::cos(cartographer::common::DegToRad(latitude));
+    const double sin_lambda = std::sin(cartographer::common::DegToRad(longitude));
+    const double cos_lambda = std::cos(cartographer::common::DegToRad(longitude));
+    const double N = a / std::sqrt(1 - e_squared * sin_phi * sin_phi);
+    const double x = (N + altitude) * cos_phi * cos_lambda;
+    const double y = (N + altitude) * cos_phi * sin_lambda;
+    const double z = (b_squared / a_squared * N + altitude) * sin_phi;
 
-  return Eigen::Vector3d(x, y, z);
+    return Eigen::Vector3d(x, y, z);
 }
 
-cartographer::transform::Rigid3d ComputeLocalFrameFromLatLong(
+cartographer::transform::Rigid3d
+ComputeLocalFrameFromLatLong(
     const double latitude, const double longitude)
 {
-  const Eigen::Vector3d translation = LatLongAltToEcef(latitude, longitude, 0.);
-  const Eigen::Quaterniond rotation =
-      Eigen::AngleAxisd(cartographer::common::DegToRad(latitude - 90.),
-                        Eigen::Vector3d::UnitY()) *
-      Eigen::AngleAxisd(cartographer::common::DegToRad(-longitude),
-                        Eigen::Vector3d::UnitZ());
-  return cartographer::transform::Rigid3d(rotation * -translation, rotation);
+    const Eigen::Vector3d translation = LatLongAltToEcef(latitude, longitude, 0.);
+    const Eigen::Quaterniond rotation =
+        Eigen::AngleAxisd(cartographer::common::DegToRad(latitude - 90.),
+                          Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(cartographer::common::DegToRad(-longitude),
+                              Eigen::Vector3d::UnitZ());
+    return cartographer::transform::Rigid3d(rotation * -translation, rotation);
 }
 
-std::unique_ptr<nav_msgs::OccupancyGrid> CreateOccupancyGridMsg(
+std::unique_ptr<nav_msgs::OccupancyGrid>
+CreateOccupancyGridMsg(
     const cartographer::io::PaintSubmapSlicesResult &painted_slices,
     const double resolution, const std::string &frame_id,
     const ros::Time &time)
 {
-  auto occupancy_grid =
-      ::cartographer::common::make_unique<nav_msgs::OccupancyGrid>();
+    auto occupancy_grid =
+        ::cartographer::common::make_unique<nav_msgs::OccupancyGrid>();
 
-  const int width = cairo_image_surface_get_width(painted_slices.surface.get());
-  const int height =
-      cairo_image_surface_get_height(painted_slices.surface.get());
-  const ros::Time now = ros::Time::now();
+    const int width = cairo_image_surface_get_width(painted_slices.surface.get());
+    const int height =
+        cairo_image_surface_get_height(painted_slices.surface.get());
+    const ros::Time now = ros::Time::now();
 
-  occupancy_grid->header.stamp = time;
-  occupancy_grid->header.frame_id = frame_id;
-  occupancy_grid->info.map_load_time = time;
-  occupancy_grid->info.resolution = resolution;
-  occupancy_grid->info.width = width;
-  occupancy_grid->info.height = height;
-  occupancy_grid->info.origin.position.x =
-      -painted_slices.origin.x() * resolution;
-  occupancy_grid->info.origin.position.y =
-      (-height + painted_slices.origin.y()) * resolution;
-  occupancy_grid->info.origin.position.z = 0.;
-  occupancy_grid->info.origin.orientation.w = 1.;
-  occupancy_grid->info.origin.orientation.x = 0.;
-  occupancy_grid->info.origin.orientation.y = 0.;
-  occupancy_grid->info.origin.orientation.z = 0.;
+    occupancy_grid->header.stamp = time;
+    occupancy_grid->header.frame_id = frame_id;
+    occupancy_grid->info.map_load_time = time;
+    occupancy_grid->info.resolution = resolution;
+    occupancy_grid->info.width = width;
+    occupancy_grid->info.height = height;
+    occupancy_grid->info.origin.position.x =
+        -painted_slices.origin.x() * resolution;
+    occupancy_grid->info.origin.position.y =
+        (-height + painted_slices.origin.y()) * resolution;
+    occupancy_grid->info.origin.position.z = 0.;
+    occupancy_grid->info.origin.orientation.w = 1.;
+    occupancy_grid->info.origin.orientation.x = 0.;
+    occupancy_grid->info.origin.orientation.y = 0.;
+    occupancy_grid->info.origin.orientation.z = 0.;
 
-  const uint32_t *pixel_data = reinterpret_cast<uint32_t *>(
-      cairo_image_surface_get_data(painted_slices.surface.get()));
-  occupancy_grid->data.reserve(width * height);
-  for (int y = height - 1; y >= 0; --y)
-  {
-    for (int x = 0; x < width; ++x)
+    const uint32_t *pixel_data = reinterpret_cast<uint32_t *>(
+        cairo_image_surface_get_data(painted_slices.surface.get()));
+    occupancy_grid->data.reserve(width * height);
+    for (int y = height - 1; y >= 0; --y)
     {
-      const uint32_t packed = pixel_data[y * width + x];
-      const unsigned char color = packed >> 16;
-      const unsigned char observed = packed >> 8;
-      const int value =
-          observed == 0
-              ? -1
-              : ::cartographer::common::RoundToInt((1. - color / 255.) * 100.);
-      CHECK_LE(-1, value);
-      CHECK_GE(100, value);
-      occupancy_grid->data.push_back(value);
+        for (int x = 0; x < width; ++x)
+        {
+            const uint32_t packed = pixel_data[y * width + x];
+            const unsigned char color = packed >> 16;
+            const unsigned char observed = packed >> 8;
+            const int value =
+                observed == 0
+                ? -1
+                : ::cartographer::common::RoundToInt((1. - color / 255.) * 100.);
+            CHECK_LE(-1, value);
+            CHECK_GE(100, value);
+            occupancy_grid->data.push_back(value);
+        }
     }
-  }
 
-  return occupancy_grid;
+    return occupancy_grid;
 }
 
 } // namespace cartographer_ros

@@ -29,6 +29,8 @@
 #include "imudata.h"
 #include "laserdata.h"
 
+#include "tf_bridge.h"
+
 /*
 #include "cartographer_ros/tf_bridge.h"
 #include "cartographer_ros_msgs/LandmarkList.h"
