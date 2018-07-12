@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "cartographer_ros/node_options.h"
+#include "node_options.h"
 
 #include <vector>
 

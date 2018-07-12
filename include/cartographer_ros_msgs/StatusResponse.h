@@ -52,7 +52,7 @@ typedef boost::shared_ptr< ::cartographer_ros_msgs::StatusResponse const> Status
 
 // constants requiring out of line definition
 
-
+/*
 
 template<typename ContainerAllocator>
 std::ostream& operator<<(std::ostream& s, const ::cartographer_ros_msgs::StatusResponse_<ContainerAllocator> & v)
@@ -60,7 +60,7 @@ std::ostream& operator<<(std::ostream& s, const ::cartographer_ros_msgs::StatusR
 ros::message_operations::Printer< ::cartographer_ros_msgs::StatusResponse_<ContainerAllocator> >::stream(s, "", v);
 return s;
 }
-
+*/
 } // namespace cartographer_ros_msgs
 
 #endif // CARTOGRAPHER_ROS_MSGS_MESSAGE_STATUSRESPONSE_H

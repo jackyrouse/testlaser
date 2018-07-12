@@ -11,6 +11,17 @@ using namespace ydlidar;
 
 namespace LASER_PandCspace
 {
+struct LASERItemRepository
+{
+    LASERMessage item_buffer[kLASERItemRepositorySize]; // 产品缓冲区, 配合 read_position 和 write_position 模型环形队列.
+    size_t read_position; // 消费者读取产品位置.
+    size_t write_position; // 生产者写入产品位置.
+
+    std::mutex mtx; // 互斥量,保护产品缓冲区
+    std::condition_variable repo_not_full; // 条件变量, 指示产品缓冲区不为满.
+    std::condition_variable repo_not_empty; // 条件变量, 指示产品缓冲区不为空.
+} gLASERItemRepository; // 产品库全局变量, 生产者和消费者操作该变量.
+typedef struct LASERItemRepository LASERItemRepository;
 
 CYdLidar laser;
 static bool running = false;

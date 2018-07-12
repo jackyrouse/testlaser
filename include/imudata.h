@@ -35,7 +35,7 @@ struct IMU_Message
     float angular_velocity_covariance[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     Vector3 linear_acceleration;
-    float linear_acceleration_convariance[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    float linear_acceleration_covariance[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 };
 typedef struct IMU_Message IMUMessage;
 

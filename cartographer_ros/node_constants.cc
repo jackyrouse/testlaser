@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "cartographer_ros/node_constants.h"
+#include "node_constants.h"
 
 #include "glog/logging.h"
 

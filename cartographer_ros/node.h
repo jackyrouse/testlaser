@@ -28,11 +28,13 @@
 #include "cartographer/common/mutex.h"
 #include "cartographer/mapping/map_builder_interface.h"
 #include "cartographer/mapping/pose_extrapolator.h"
+#include "cartographer/transform/rigid_transform.h"
+#include "cartographer/io/submap_painter.h"
+
 #include "map_builder_bridge.h"
 #include "node_constants.h"
 #include "node_options.h"
 #include "trajectory_options.h"
-#include "MyBuffer.h"
 
 
 #include "cartographer_ros_msgs/SensorTopics.h"
@@ -40,6 +42,7 @@
 
 #include "imudata.h"
 #include "laserdata.h"
+#include "Submapdata.h"
 
 /*
 #include "cartographer_ros_msgs/FinishTrajectory.h"
@@ -69,8 +72,7 @@ class Node
 {
 public:
     Node(const NodeOptions &node_options,
-         std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder,
-         MyBuffer *tf_buffer);
+         std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder);
     ~Node();
 
     Node(const Node &) = delete;
@@ -127,7 +129,11 @@ public:
     SerializeState(const std::string &filename);
 
     // Loads a serialized SLAM state from a .pbstream file.
-
+    void
+    GetMap();
+    std::string last_frame_id_;
+    timeval last_timestamp_;
+    std::map<::cartographer::mapping::SubmapId, ::cartographer::io::SubmapSlice> submap_slices_ GUARDED_BY(mutex_);
 
 private:
 /*
@@ -149,6 +155,8 @@ private:
     void
     PublishSubmapList(const ::ros::WallTimerEvent &timer_event);
 */
+
+
     void
     AddExtrapolator(int trajectory_id, const TrajectoryOptions &options);
     void
@@ -163,7 +171,6 @@ private:
         int trajectory_id) REQUIRES(mutex_);
 
     const NodeOptions node_options_;
-
 
     cartographer::common::Mutex mutex_;
     MapBuilderBridge map_builder_bridge_ GUARDED_BY(mutex_);
@@ -195,6 +202,9 @@ private:
     std::unordered_map<int, TrajectorySensorSamplers> sensor_samplers_;
     std::unordered_set<std::string> subscribed_topics_;
     std::unordered_map<int, bool> is_active_trajectory_ GUARDED_BY(mutex_);
+
+
+
 
     // We have to keep the timer handles of ::ros::WallTimers around, otherwise
     // they do not fire.

@@ -20,7 +20,7 @@
 #include <memory>
 
 #include "cartographer/transform/rigid_transform.h"
-#include "tf2_ros/buffer.h"
+//#include "tf2_ros/buffer.h"
 
 #include "time_conversion.h"
 
@@ -31,7 +31,7 @@ class TfBridge
 {
 public:
     TfBridge(const std::string &tracking_frame,
-             double lookup_transform_timeout_sec, const tf2_ros::Buffer *buffer);
+             double lookup_transform_timeout_sec);
     ~TfBridge() {}
 
     TfBridge(const TfBridge &) = delete;
@@ -47,7 +47,6 @@ public:
 private:
     const std::string tracking_frame_;
     const double lookup_transform_timeout_sec_;
-    const tf2_ros::Buffer *const buffer_;
 };
 
 }  // namespace cartographer_ros

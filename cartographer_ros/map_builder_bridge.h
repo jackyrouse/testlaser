@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <sys/time.h>
 
 #include "cartographer/common/mutex.h"
 #include "cartographer/mapping/map_builder_interface.h"
@@ -30,7 +31,8 @@
 #include "sensor_bridge.h"
 #include "tf_bridge.h"
 #include "trajectory_options.h"
-#include "MyBuffer.h"
+#include "Submapdata.h"
+
 /*
 #include "cartographer_ros_msgs/SubmapEntry.h"
 #include "cartographer_ros_msgs/SubmapList.h"
@@ -64,8 +66,7 @@ public:
 
     MapBuilderBridge(
         const NodeOptions &node_options,
-        std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder,
-        MyBuffer *tf_buffer);
+        std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder);
 
     MapBuilderBridge(const MapBuilderBridge &) = delete;
     MapBuilderBridge &
@@ -86,25 +87,38 @@ public:
     bool
     SerializeState(const std::string &filename);
 
+/*
     void
     HandleSubmapQuery(
         cartographer_ros_msgs::SubmapQuery::Request &request,
         cartographer_ros_msgs::SubmapQuery::Response &response);
+*/
+    void
+    HandlerSubmapQuery(::cartographer::mapping::SubmapId &submapid, MySubmapResponse &mysubmapresponse);
 
     std::set<int>
     GetFrozenTrajectoryIds();
+
+/*
     cartographer_ros_msgs::SubmapList
     GetSubmapList();
+*/
+    MySubmapList
+    GetSubmapList();
+
     std::unordered_map<int, TrajectoryState>
     GetTrajectoryStates()
     EXCLUDES(mutex_);
+/*
     visualization_msgs::MarkerArray
     GetTrajectoryNodeList();
+
     visualization_msgs::MarkerArray
     GetLandmarkPosesList();
+
     visualization_msgs::MarkerArray
     GetConstraintList();
-
+*/
     SensorBridge *
     sensor_bridge(int trajectory_id);
 
@@ -123,7 +137,7 @@ private:
     std::unordered_map<int, std::shared_ptr<const TrajectoryState::LocalSlamData>>
         trajectory_state_data_ GUARDED_BY(mutex_);
     std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder_;
-    tf2_ros::Buffer *const tf_buffer_;
+//    tf2_ros::Buffer *const tf_buffer_;
 
     std::unordered_map<std::string /* landmark ID */, int> landmark_to_index_;
 

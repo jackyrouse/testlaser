@@ -61,13 +61,18 @@ using carto::transform::Rigid3d;
 
 Node::Node(
     const NodeOptions &node_options,
-    std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder,
-    MyBuffer *const tf_buffer)
+    std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder)
+//    MyBuffer *const tf_buffer)
     : node_options_(node_options),
-      map_builder_bridge_(node_options_, std::move(map_builder), tf_buffer)
+      map_builder_bridge_(node_options_, std::move(map_builder))
 {
-/*
     carto::common::MutexLocker lock(&mutex_);
+/*
+ *  获取地图的过程：
+ *  1、从map_builder_bridge_.GetSubmapList()获取submaplist
+ *  2、遍历submaplist中的数据得到submapid，根据submapid查询map_builder_bridge_.HandleSubmapQuery得到submap
+ *  3、拼接submap成为map
+ *  以下ros中的topic就是第一步，ros中的service就是第二步，第三步在occupancy_grid_node_main.cc中
     submap_list_publisher_ =
         node_handle_.advertise<::cartographer_ros_msgs::SubmapList>(
             kSubmapListTopic, kLatestOnlyPublisherQueueSize);
@@ -86,6 +91,7 @@ Node::~Node() { FinishAllTrajectories(); }
 
 /* this function is the callback of service whose name is kSubmapQueryServiceName
  * response contain the texture of submap defined by submapid
+ *
 bool
 Node::HandleSubmapQuery(
     ::cartographer_ros_msgs::SubmapQuery::Request &request,
@@ -323,6 +329,81 @@ Node::ComputeDefaultSensorIdsForMultipleBags(
     return bags_sensor_ids;
 }
 
+void
+Node::GetMap()
+{
+    using SubmapId = ::cartographer::mapping::SubmapId;
+    using SubmapSlice = ::cartographer::io::SubmapSlice;
+
+    std::set<SubmapId> submap_ids_to_delete;
+
+    MySubmapList msg = map_builder_bridge_.GetSubmapList();
+
+    for (const auto &pair : submap_slices_)
+    {
+        submap_ids_to_delete.insert(pair.first);
+    }
+
+    for(const auto &submap_msg : msg.submap)
+    {
+        SubmapId id{submap_msg.my_trajectory_id, submap_msg.my_submap_index};
+        submap_ids_to_delete.erase(id);
+        SubmapSlice  &submap_slice = submap_slices_[id];
+        submap_slice.pose = ToRigid3d(submap_msg.my_pose);
+        submap_slice.metadata_version = submap_msg.my_submap_version;
+        if (submap_slice.surface != nullptr &&
+            submap_slice.version == submap_msg.my_submap_version)
+        {
+            continue;
+        }
+
+        MySubmapResponse my_fetched_textures;
+        map_builder_bridge_.HandlerSubmapQuery(id, my_fetched_textures);
+        if(!my_fetched_textures.status)
+        {
+            continue;
+        }
+        if(my_fetched_textures.textures.empty())
+        {
+            continue;
+        }
+
+        auto fetched_textures = ::cartographer::common::make_unique<::cartographer::io::SubmapTextures>();
+        fetched_textures->version = my_fetched_textures.my_response_version;
+        for(const auto &texture : my_fetched_textures.textures)
+        {
+            const std::string compressed_cells(texture.cells.begin(), texture.cells.end());
+            fetched_textures->textures.emplace_back(::cartographer::io::SubmapTexture{
+                ::cartographer::io::UnpackTextureData(compressed_cells, texture.width, texture.height),
+                texture.width, texture.height,
+                texture.resolution,
+                ToRigid3d(texture.slice_pose)});
+        }
+
+        CHECK(!fetched_textures->textures.empty());
+        submap_slice.version = fetched_textures->version;
+        const auto fetched_texture = fetched_textures->textures.begin();
+        submap_slice.width = fetched_texture->width;
+        submap_slice.height = fetched_texture->height;
+        submap_slice.slice_pose = fetched_texture->slice_pose;
+        submap_slice.resolution = fetched_texture->resolution;
+        submap_slice.cairo_data.clear();
+        submap_slice.surface = ::cartographer::io::DrawTexture(fetched_texture->pixels.intensity,
+                                                               fetched_texture->pixels.alpha,
+                                                               fetched_texture->width,
+                                                               fetched_texture->height,
+                                                               &submap_slice.cairo_data);
+    }
+
+    for (const auto &id : submap_ids_to_delete)
+    {
+        submap_slices_.erase(id);
+    }
+
+    last_frame_id_ = msg.header.frame_id;
+    last_timestamp_ = msg.header.stamp;
+};
+
 int
 Node::AddOfflineTrajectory(
     const std::set<cartographer::mapping::TrajectoryBuilderInterface::SensorId> &
@@ -337,6 +418,7 @@ Node::AddOfflineTrajectory(
     is_active_trajectory_[trajectory_id] = true;
     return trajectory_id;
 }
+
 
 void
 Node::FinishAllTrajectories()

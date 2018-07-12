@@ -47,20 +47,19 @@ SensorBridge::SensorBridge(
     const int num_subdivisions_per_laser_scan,
     const std::string &tracking_frame,
     const double lookup_transform_timeout_sec,
-    tf2_ros::Buffer *const tf_buffer,
     carto::mapping::TrajectoryBuilderInterface *const trajectory_builder)
     : num_subdivisions_per_laser_scan_(num_subdivisions_per_laser_scan),
-      tf_bridge_(tracking_frame, lookup_transform_timeout_sec, tf_buffer),
+      tf_bridge_(tracking_frame, lookup_transform_timeout_sec),
       trajectory_builder_(trajectory_builder) {}
 
 std::unique_ptr<carto::sensor::ImuData> SensorBridge::ToImuData(const IMU_PandCspace::IMUMessage& msg)
 {
-    CHECK_NE(msg->linear_acceleration_covariance[0], -1)
+    CHECK_NE(msg.linear_acceleration_covariance[0], -1)
         << "Your IMU data claims to not contain linear acceleration measurements "
            "by setting linear_acceleration_covariance[0] to -1. Cartographer "
            "requires this data to work. See "
            "http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html.";
-    CHECK_NE(msg->angular_velocity_covariance[0], -1)
+    CHECK_NE(msg.angular_velocity_covariance[0], -1)
         << "Your IMU data claims to not contain angular velocity measurements "
            "by setting angular_velocity_covariance[0] to -1. Cartographer "
            "requires this data to work. See "

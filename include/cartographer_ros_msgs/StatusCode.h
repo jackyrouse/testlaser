@@ -9,12 +9,12 @@
 #include <string>
 #include <vector>
 #include <map>
-
+/*
 #include <ros/types.h>
 #include <ros/serialization.h>
 #include <ros/builtin_message_traits.h>
 #include <ros/message_operations.h>
-
+*/
 
 namespace cartographer_ros_msgs
 {
@@ -100,16 +100,16 @@ typedef boost::shared_ptr< ::cartographer_ros_msgs::StatusCode const> StatusCode
    
 
 
-
+/*
 template<typename ContainerAllocator>
 std::ostream& operator<<(std::ostream& s, const ::cartographer_ros_msgs::StatusCode_<ContainerAllocator> & v)
 {
 ros::message_operations::Printer< ::cartographer_ros_msgs::StatusCode_<ContainerAllocator> >::stream(s, "", v);
 return s;
 }
-
+*/
 } // namespace cartographer_ros_msgs
-
+/*
 namespace ros
 {
 namespace message_traits
@@ -256,5 +256,5 @@ struct Printer< ::cartographer_ros_msgs::StatusCode_<ContainerAllocator> >
 
 } // namespace message_operations
 } // namespace ros
-
+*/
 #endif // CARTOGRAPHER_ROS_MSGS_MESSAGE_STATUSCODE_H

@@ -40,8 +40,25 @@
 
 #include "imudata.h"
 #include "laserdata.h"
+#include "Submapdata.h"
 
-namespace cartographer_ros {
+namespace cartographer_ros
+{
+/*
+sensor_msgs::PointCloud2 ToPointCloud2Message(
+    int64_t timestamp, const std::string& frame_id,
+    const ::cartographer::sensor::TimedPointCloud& point_cloud);
+
+geometry_msgs::Transform ToGeometryMsgTransform(
+    const ::cartographer::transform::Rigid3d& rigid3d);
+*/
+
+Pose
+ToGeometryMsgPose(
+    const ::cartographer::transform::Rigid3d &rigid3d);
+
+Point
+ToGeometryMsgPoint(const Eigen::Vector3d &vector3d);
 
 // Converts ROS message to point cloud. Returns the time when the last point
 // was acquired (different from the ROS timestamp). Timing of points is given in
@@ -49,7 +66,7 @@ namespace cartographer_ros {
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage& msg);
+ToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg);
 
 /*
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
@@ -70,15 +87,22 @@ ToPointCloudWithIntensities(const sensor_msgs::PointCloud2& message);
     const cartographer_ros_msgs::LandmarkList& landmark_list);
 */
 
+/*
 ::cartographer::transform::Rigid3d ToRigid3d(
     const geometry_msgs::TransformStamped& transform);
+*/
 
-::cartographer::transform::Rigid3d ToRigid3d(const geometry_msgs::Pose& pose);
+::cartographer::transform::Rigid3d
+ToRigid3d(const Pose &pose);
 
-::cartographer::transform::Rigid3d ToRigid3d(const Eigen::Vector3d& vector, const Eigen::Quaterniond& quaternion);
+::cartographer::transform::Rigid3d
+ToRigid3d(const Eigen::Vector3d &vector, const Eigen::Quaterniond &quaternion);
 
-Eigen::Vector3d ToEigen(const IMU_PandCspace::Vector3& vector3);
+Eigen::Vector3d
+ToEigen(const IMU_PandCspace::Vector3 &vector3);
 
+Eigen::Quaterniond
+ToEigen(const cartographer_ros::Quaternion &quaternion);
 /*
 Eigen::Vector3d ToEigen(const geometry_msgs::Vector3& vector3);
 
@@ -86,21 +110,24 @@ Eigen::Quaterniond ToEigen(const geometry_msgs::Quaternion& quaternion);
 */
 
 // Converts from WGS84 (latitude, longitude, altitude) to ECEF.
-Eigen::Vector3d LatLongAltToEcef(double latitude, double longitude,
-                                 double altitude);
+Eigen::Vector3d
+LatLongAltToEcef(double latitude, double longitude,
+                 double altitude);
 
 // Returns a transform that takes ECEF coordinates from nearby points to a local
 // frame that has z pointing upwards.
-cartographer::transform::Rigid3d ComputeLocalFrameFromLatLong(double latitude,
-                                                              double longitude);
+cartographer::transform::Rigid3d
+ComputeLocalFrameFromLatLong(double latitude,
+                             double longitude);
 
 // Points to an occupancy grid message at a specific resolution from painted
 // submap slices obtained via ::cartographer::io::PaintSubmapSlices(...).
+/*
 std::unique_ptr<nav_msgs::OccupancyGrid> CreateOccupancyGridMsg(
     const cartographer::io::PaintSubmapSlicesResult& painted_slices,
     const double resolution, const std::string& frame_id,
     const ros::Time& time);
-
+*/
 }  // namespace cartographer_ros
 
 #endif  // CARTOGRAPHER_ROS_CARTOGRAPHER_ROS_MSG_CONVERSION_H

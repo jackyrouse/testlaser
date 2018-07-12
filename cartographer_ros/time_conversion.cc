@@ -17,11 +17,11 @@
 #include "time_conversion.h"
 
 #include "cartographer/common/time.h"
-#include "ros/ros.h"
+//#include "ros/ros.h"
 
 namespace cartographer_ros
 {
-
+/*
 ::ros::Time
 ToRos(::cartographer::common::Time time)
 {
@@ -35,7 +35,7 @@ ToRos(::cartographer::common::Time time)
     ros_time.fromNSec(ns_since_unix_epoch);
     return ros_time;
 }
-
+*/
 // TODO(pedrofernandez): Write test.
 ::cartographer::common::Time
 FromRos(const timeval &time)

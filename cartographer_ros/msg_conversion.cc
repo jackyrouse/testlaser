@@ -25,12 +25,15 @@
 #include "cartographer/transform/proto/transform.pb.h"
 #include "cartographer/transform/transform.h"
 #include "time_conversion.h"
+/*
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/Transform.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/Vector3.h"
+ */
 #include "glog/logging.h"
+/*
 #include "nav_msgs/OccupancyGrid.h"
 #include "ros/ros.h"
 #include "ros/serialization.h"
@@ -38,6 +41,7 @@
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/MultiEchoLaserScan.h"
 #include "sensor_msgs/PointCloud2.h"
+ */
 
 namespace cartographer_ros
 {
@@ -53,6 +57,7 @@ using ::cartographer::sensor::LandmarkData;
 using ::cartographer::sensor::LandmarkObservation;
 using ::cartographer::sensor::PointCloudWithIntensities;
 using ::cartographer::transform::Rigid3d;
+/*
 using ::cartographer_ros_msgs::LandmarkEntry;
 using ::cartographer_ros_msgs::LandmarkList;
 
@@ -86,6 +91,7 @@ PreparePointCloud2Message(const int64_t timestamp,
     msg.data.resize(16 * num_points);
     return msg;
 }
+*/
 
 // For sensor_msgs::LaserScan and sensor_msgs::MultiEchoLaserScan.
 std::tuple<PointCloudWithIntensities, ::cartographer::common::Time>
@@ -113,7 +119,7 @@ LaserScanToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg)
             Eigen::Vector4f point;
             point << rotation * (first_echo * Eigen::Vector3f::UnitX()), i * msg.time_increment;
             point_cloud.points.push_back(point);
-            if (msg.intensitiessize> 0)
+            if (msg.intensitiessize > 0)
             {
                 CHECK_EQ(msg.intensitiessize, msg.rangessize);
                 const auto &echo_intensities = msg.intensities[i];
@@ -138,7 +144,7 @@ LaserScanToPointCloudWithIntensities(const LASER_PandCspace::LASERMessage &msg)
     }
     return std::make_tuple(point_cloud, timestamp);
 }
-
+/*
 bool
 PointCloud2HasField(const sensor_msgs::PointCloud2 &pc2,
                     const std::string &field_name)
@@ -171,6 +177,7 @@ ToPointCloud2Message(
     }
     return msg;
 }
+*/
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
@@ -227,7 +234,7 @@ ToPointCloudWithIntensities(const sensor_msgs::PointCloud2 &message)
   return std::make_tuple(point_cloud, FromRos(message.header.stamp));
 }
 */
-
+/*
 LandmarkData
 ToLandmarkData(const LandmarkList &landmark_list)
 {
@@ -241,16 +248,19 @@ ToLandmarkData(const LandmarkList &landmark_list)
     }
     return landmark_data;
 }
+*/
 
+/*
 Rigid3d
 ToRigid3d(const geometry_msgs::TransformStamped &transform)
 {
     return Rigid3d(ToEigen(transform.transform.translation),
                    ToEigen(transform.transform.rotation));
 }
+*/
 
 Rigid3d
-ToRigid3d(const geometry_msgs::Pose &pose)
+ToRigid3d(const Pose &pose)
 {
     return Rigid3d({pose.position.x, pose.position.y, pose.position.z},
                    ToEigen(pose.orientation));
@@ -262,10 +272,19 @@ ToRigid3d(const Eigen::Vector3d &vector, const Eigen::Quaterniond &quaternion)
     return Rigid3d(vector, quaternion);
 }
 
-Eigen::Vector3d ToEigen(const IMU_PandCspace::Vector3 &vector3)
+Eigen::Vector3d
+ToEigen(const IMU_PandCspace::Vector3 &vector3)
 {
     return Eigen::Vector3d(vector3.x, vector3.y, vector3.z);
 }
+
+Eigen::Quaterniond
+ToEigen(const cartographer_ros::Quaternion &quaternion)
+{
+    return Eigen::Quaterniond(quaternion.w, quaternion.x, quaternion.y,
+                              quaternion.z);
+}
+
 /*
 Eigen::Vector3d ToEigen(const geometry_msgs::Vector3 &vector3)
 {
@@ -278,7 +297,7 @@ Eigen::Quaterniond ToEigen(const geometry_msgs::Quaternion &quaternion)
                             quaternion.z);
 }
 */
-
+/*
 geometry_msgs::Transform
 ToGeometryMsgTransform(const Rigid3d &rigid3d)
 {
@@ -292,11 +311,12 @@ ToGeometryMsgTransform(const Rigid3d &rigid3d)
     transform.rotation.z = rigid3d.rotation().z();
     return transform;
 }
+*/
 
-geometry_msgs::Pose
+Pose
 ToGeometryMsgPose(const Rigid3d &rigid3d)
 {
-    geometry_msgs::Pose pose;
+    Pose pose;
     pose.position = ToGeometryMsgPoint(rigid3d.translation());
     pose.orientation.w = rigid3d.rotation().w();
     pose.orientation.x = rigid3d.rotation().x();
@@ -305,10 +325,10 @@ ToGeometryMsgPose(const Rigid3d &rigid3d)
     return pose;
 }
 
-geometry_msgs::Point
+Point
 ToGeometryMsgPoint(const Eigen::Vector3d &vector3d)
 {
-    geometry_msgs::Point point;
+    Point point;
     point.x = vector3d.x();
     point.y = vector3d.y();
     point.z = vector3d.z();
@@ -350,7 +370,7 @@ ComputeLocalFrameFromLatLong(
                               Eigen::Vector3d::UnitZ());
     return cartographer::transform::Rigid3d(rotation * -translation, rotation);
 }
-
+/*
 std::unique_ptr<nav_msgs::OccupancyGrid>
 CreateOccupancyGridMsg(
     const cartographer::io::PaintSubmapSlicesResult &painted_slices,
@@ -361,8 +381,7 @@ CreateOccupancyGridMsg(
         ::cartographer::common::make_unique<nav_msgs::OccupancyGrid>();
 
     const int width = cairo_image_surface_get_width(painted_slices.surface.get());
-    const int height =
-        cairo_image_surface_get_height(painted_slices.surface.get());
+    const int height = cairo_image_surface_get_height(painted_slices.surface.get());
     const ros::Time now = ros::Time::now();
 
     occupancy_grid->header.stamp = time;
@@ -381,8 +400,7 @@ CreateOccupancyGridMsg(
     occupancy_grid->info.origin.orientation.y = 0.;
     occupancy_grid->info.origin.orientation.z = 0.;
 
-    const uint32_t *pixel_data = reinterpret_cast<uint32_t *>(
-        cairo_image_surface_get_data(painted_slices.surface.get()));
+    const uint32_t *pixel_data = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(painted_slices.surface.get()));
     occupancy_grid->data.reserve(width * height);
     for (int y = height - 1; y >= 0; --y)
     {
@@ -403,5 +421,6 @@ CreateOccupancyGridMsg(
 
     return occupancy_grid;
 }
-
+*/
+}
 } // namespace cartographer_ros
